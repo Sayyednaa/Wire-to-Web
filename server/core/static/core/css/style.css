@@ -918,3 +918,15 @@ textarea.form-control {
     display: none;
   }
 }
+
+/* Canvas Responsiveness on Mobile Screens */
+@media (max-width: 1023px) {
+  .canvas-sidebar {
+    max-height: none;
+    overflow-y: visible;
+  }
+  .canvas-viewport {
+    max-height: 550px;
+    padding: 16px;
+  }
+}
