@@ -297,18 +297,28 @@
 
       <!-- Windows Agent Setup Guide -->
       <div id="setup-guide" class="card" style="background-color: var(--color-surface-soft); border-color: var(--color-hairline);">
-        <h3 style="margin-bottom: 16px;">Setup Windows Agent</h3>
-        <p style="font-size: 14px; margin-bottom: 16px; color: var(--color-body);">
-          To print files to your home or office printer, download and run the Windows Agent on the connected computer.
+        <h3 style="margin-bottom: 12px;">Setup Windows Agent</h3>
+        <p style="font-size: 14px; margin-bottom: 20px; color: var(--color-body); line-height: 1.5;">
+          To link physical USB or parallel printers to your account, download and run our silent Windows Agent installer on the host computer.
         </p>
+
+        <!-- CTA Buttons -->
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+          <a href="https://github.com/Sayyednaa/Wire-to-Web/raw/main/agent/dist/install_agent.exe" class="btn btn-primary" style="height: 42px; display: flex; align-items: center; justify-content: center; font-size: 14px; gap: 8px;">
+            📥 Download Agent
+          </a>
+          <a href="https://github.com/Sayyednaa/Wire-to-Web" target="_blank" rel="noopener" class="btn btn-secondary" style="height: 42px; display: flex; align-items: center; justify-content: center; font-size: 14px;">
+            💻 View Source on GitHub
+          </a>
+        </div>
         
-        <div style="background-color: var(--color-canvas); padding: 16px; border-radius: var(--rounded-md); border: 1px solid var(--color-hairline); margin-bottom: 16px;">
-          <div style="font-size: 12px; font-weight:600; text-transform: uppercase; color: var(--color-muted); margin-bottom: 8px;">Agent Run Instructions</div>
-          <ol style="font-size: 13px; padding-left: 20px; color: var(--color-body); display: flex; flex-direction: column; gap: 8px;">
-            <li>Ensure Python 3.12+ is installed on the host PC.</li>
-            <li>Configure the agent settings in the local config file or command prompt.</li>
-            <li>Use the same credentials as this account to log in the agent.</li>
-            <li>The agent will automatically register your locally connected printers.</li>
+        <div style="background-color: var(--color-canvas); padding: 16px; border-radius: var(--rounded-md); border: 1px solid var(--color-hairline); margin-bottom: 8px;">
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--color-muted); margin-bottom: 10px; letter-spacing: 0.5px;">Setup Instructions</div>
+          <ol style="font-size: 13px; padding-left: 20px; color: var(--color-body); display: flex; flex-direction: column; gap: 10px; line-height: 1.45;">
+            <li>Download and run the <strong>install_agent.exe</strong> standalone installer on the Windows PC connected to your printer hardware.</li>
+            <li>When prompted, enter the Server URL: <br><code style="background-color: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 3px; font-size: 12px; display: inline-block; margin-top: 4px; font-family: monospace;">{{ request.scheme }}://{{ request.get_host }}</code></li>
+            <li>Sign in using your account username and password.</li>
+            <li>The installer will automatically register your active printers, install binaries to <code>Local AppData</code>, set the Registry autostart key, and launch the background printing daemon silently (running windowless with no command prompt window).</li>
           </ol>
         </div>
       </div>
