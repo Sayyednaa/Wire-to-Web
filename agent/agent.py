@@ -19,7 +19,13 @@ except ImportError:
     print("Please install it using: pip install pywin32")
     sys.exit(1)
 
-CONFIG_FILE = "config.json"
+# Resolve configuration file path relative to the executable (if frozen) or script directory
+if getattr(sys, 'frozen', False):
+    EXECUTABLE_DIR = os.path.dirname(sys.executable)
+else:
+    EXECUTABLE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+CONFIG_FILE = os.path.join(EXECUTABLE_DIR, "config.json")
 
 class CloudPrintAgent:
     def __init__(self):
@@ -216,6 +222,12 @@ class CloudPrintAgent:
         Downloads the lightweight PDFtoPrinter.exe utility from a public academic site
         to serve as a reliable, silent, non-GUI fallback for Windows printing.
         """
+        # Support PyInstaller frozen bundles
+        if getattr(sys, 'frozen', False):
+            bundled_path = os.path.join(sys._MEIPASS, "PDFtoPrinter.exe")
+            if os.path.exists(bundled_path):
+                return bundled_path
+
         local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "PDFtoPrinter.exe")
         if os.path.exists(local_path):
             return local_path

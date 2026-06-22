@@ -206,6 +206,35 @@ To run the agent automatically in the background on startup, you can add a short
    start /min python agent.py
    ```
 
+### 5. Redistributing the Agent as a Windowless Background App & Installer (.exe)
+To distribute the agent to end users, you can compile it as a **windowless background application** along with an **interactive installer** that configures autostart registry keys and launches the background daemon automatically.
+
+#### Step 1: Build the Windowless Agent Executable
+This compiles `agent.py` using PyInstaller's `--noconsole` flag, meaning it will run silently in the background without exposing any command prompt window.
+1. Run the compile command inside the `agent/` directory:
+   ```cmd
+   pyinstaller --onefile --noconsole --add-data "PDFtoPrinter.exe;." agent.py
+   ```
+2. This creates `dist/agent.exe` (windowless print loop daemon).
+
+#### Step 2: Build the Standalone Installer Executable
+The installer (`install.py`) prompts the user for setup credentials in the console, writes configuration parameters, extracts the windowless `agent.exe` and `PDFtoPrinter.exe` to Local AppData, sets registry autostart keys, and launches the background process.
+1. Run the installer compile command inside the `agent/` directory (which bundles the compiled windowless `agent.exe` and `PDFtoPrinter.exe` inside it):
+   ```cmd
+   pyinstaller --onefile --name "install_agent" --add-data "dist/agent.exe;." --add-data "PDFtoPrinter.exe;." install.py
+   ```
+2. This creates the final **`dist/install_agent.exe`** installer.
+
+#### Running the Distributed Installer:
+- Simply copy **`install_agent.exe`** to any Windows machine. **No Python, pip, or external files are required on the client machine!**
+- Run `install_agent.exe` from a Command Prompt or double-click it.
+- Enter your Server URL (e.g. `https://wiretoweb.pythonanywhere.com`) and log in.
+- The installer automatically:
+  1. Installs all executables into `C:\Users\<Username>\AppData\Local\WireToWeb`.
+  2. Generates the device configuration and registers the local printer drivers on the server.
+  3. Places the agent under autostart (`HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`) to launch automatically on Windows boot.
+  4. Launches the windowless background print spooler immediately.
+
 ---
 
 ## 📖 End-to-End Usage Walkthrough
