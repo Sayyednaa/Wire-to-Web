@@ -211,11 +211,42 @@ class CloudPrintAgent:
             print(f"[-] Exception downloading job #{job_id}: {e}")
             return None
 
+    def download_pdftoprinter_if_needed(self):
+        """
+        Downloads the lightweight PDFtoPrinter.exe utility from a public academic site
+        to serve as a reliable, silent, non-GUI fallback for Windows printing.
+        """
+        local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "PDFtoPrinter.exe")
+        if os.path.exists(local_path):
+            return local_path
+        
+        url = "http://www.columbia.edu/~em36/PDFtoPrinter.exe"
+        print(f"[*] Native PDF handler not found. Downloading PDFtoPrinter.exe helper from {url}...")
+        try:
+            # Silent request download
+            response = requests.get(url, timeout=20)
+            if response.status_code == 200:
+                with open(local_path, "wb") as f:
+                    f.write(response.content)
+                print("[+] Successfully downloaded PDFtoPrinter.exe helper.")
+                return local_path
+            else:
+                print(f"[-] Failed to download PDFtoPrinter.exe: HTTP {response.status_code}")
+        except Exception as e:
+            print(f"[-] Connection error downloading printing helper: {e}")
+        return None
+
     def print_file(self, printer_name, file_path):
         """
-        Natively print PDF file on Windows using ShellExecute.
-        Falls back to Microsoft Edge headless print command if ShellExecute fails.
+        Prints a PDF file natively to a target printer using a robust hierarchy of fallback methods:
+        1. win32api ShellExecute with "printto" verb.
+        2. Local Adobe Acrobat Reader (if installed).
+        3. Local SumatraPDF (if installed).
+        4. PDFtoPrinter.exe (downloaded automatically if needed).
+        5. win32api ShellExecute with "print" verb (fallback default).
         """
+        import subprocess
+
         # Save current default printer to restore later
         try:
             orig_default = win32print.GetDefaultPrinter()
@@ -229,57 +260,86 @@ class CloudPrintAgent:
             print(f"[-] Warning: Failed to set default printer via win32print: {e}")
 
         success = False
-        shell_error = None
+        print_errors = []
 
-        # Method 1: Try ShellExecute print verb
+        # --- Method 1: win32api ShellExecute with "printto" verb ---
         try:
-            print(f"[*] Triggering Windows print verb for file: {file_path}")
-            # ShellExecute runs asynchronously
-            win32api.ShellExecute(0, "print", file_path, None, ".", 0)
-            time.sleep(3) # Give spooler time
+            print(f"[*] Method 1: Triggering Windows 'printto' verb for file: {file_path}")
+            # printto arguments: file, printer, driver (optional), port (optional)
+            win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
+            time.sleep(3)  # Give spooler time
             success = True
-            print("[+] ShellExecute command sent successfully.")
+            print("[+] Method 1 (printto verb) completed successfully.")
         except Exception as e:
-            shell_error = e
-            print(f"[-] ShellExecute print verb failed: {e}. Trying fallback methods...")
+            print_errors.append(f"ShellExecute printto: {e}")
+            print(f"[-] Method 1 failed: {e}")
 
-        # Method 2: Fallback to Microsoft Edge (fully native on Win 10/11)
+        # --- Method 2: Adobe Acrobat Reader ---
         if not success:
-            import subprocess
-            local_appdata = os.environ.get('LOCALAPPDATA', '')
-            edge_paths = [
-                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            acrobat_paths = [
+                r"C:\Program Files\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
+                r"C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
+                r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
+                r"C:\Program Files (x86)\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
             ]
-            if local_appdata:
-                edge_paths.append(os.path.join(local_appdata, r"Microsoft\Edge\Application\msedge.exe"))
-            
-            edge_bin = None
-            for p in edge_paths:
-                if os.path.exists(p):
-                    edge_bin = p
-                    break
-            
-            if edge_bin:
+            acrobat_bin = next((p for p in acrobat_paths if os.path.exists(p)), None)
+            if acrobat_bin:
                 try:
-                    print(f"[*] Found Microsoft Edge at: {edge_bin}")
-                    print(f"[*] Printing silently using Microsoft Edge headless command...")
-                    # Command format: msedge --headless --disable-gpu --print-to-destination="Printer Name" "file.pdf"
-                    cmd = [
-                        edge_bin,
-                        "--headless",
-                        "--disable-gpu",
-                        f"--print-to-destination={printer_name}",
-                        file_path
-                    ]
-                    # Run silently in background
+                    print(f"[*] Method 2: Triggering Adobe Acrobat Reader: {acrobat_bin}")
+                    # Command line parameters: /t <filename> <printer_name>
+                    cmd = [acrobat_bin, "/t", file_path, printer_name]
                     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     success = True
-                    print("[+] Edge print command completed successfully.")
-                except Exception as edge_err:
-                    print(f"[-] Fallback to Edge print failed: {edge_err}")
-            else:
-                print("[-] Microsoft Edge executable not found at standard paths.")
+                    print("[+] Method 2 (Adobe Reader) print job sent.")
+                except Exception as e:
+                    print_errors.append(f"Adobe Acrobat Reader: {e}")
+                    print(f"[-] Method 2 failed: {e}")
+
+        # --- Method 3: SumatraPDF ---
+        if not success:
+            sumatra_paths = [
+                r"C:\Program Files\SumatraPDF\SumatraPDF.exe",
+                r"C:\Program Files (x86)\SumatraPDF\SumatraPDF.exe",
+            ]
+            sumatra_bin = next((p for p in sumatra_paths if os.path.exists(p)), None)
+            if sumatra_bin:
+                try:
+                    print(f"[*] Method 3: Triggering SumatraPDF: {sumatra_bin}")
+                    # Command parameters: -print-to <printer_name> -exit-on-print <filename>
+                    cmd = [sumatra_bin, "-print-to", printer_name, "-exit-on-print", file_path]
+                    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    success = True
+                    print("[+] Method 3 (SumatraPDF) print job sent.")
+                except Exception as e:
+                    print_errors.append(f"SumatraPDF: {e}")
+                    print(f"[-] Method 3 failed: {e}")
+
+        # --- Method 4: PDFtoPrinter.exe (Automatic Helper download) ---
+        if not success:
+            helper_path = self.download_pdftoprinter_if_needed()
+            if helper_path and os.path.exists(helper_path):
+                try:
+                    print(f"[*] Method 4: Executing PDFtoPrinter helper...")
+                    # Command parameters: PDFtoPrinter.exe <filename> <printer_name>
+                    cmd = [helper_path, file_path, printer_name]
+                    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    success = True
+                    print("[+] Method 4 (PDFtoPrinter) completed successfully.")
+                except Exception as e:
+                    print_errors.append(f"PDFtoPrinter helper: {e}")
+                    print(f"[-] Method 4 failed: {e}")
+
+        # --- Method 5: win32api ShellExecute with default "print" verb ---
+        if not success:
+            try:
+                print(f"[*] Method 5: Triggering default 'print' verb for file: {file_path}")
+                win32api.ShellExecute(0, "print", file_path, None, ".", 0)
+                time.sleep(3)
+                success = True
+                print("[+] Method 5 (print verb) completed successfully.")
+            except Exception as e:
+                print_errors.append(f"ShellExecute print: {e}")
+                print(f"[-] Method 5 failed: {e}")
 
         # Restore original default printer if it existed
         if orig_default:
@@ -289,7 +349,8 @@ class CloudPrintAgent:
                 pass
 
         if not success:
-            raise shell_error if shell_error else Exception("All print methods failed.")
+            err_summary = " | ".join(print_errors)
+            raise Exception(f"All print methods failed on Windows host. Errors: {err_summary}")
         return True
 
     def process_jobs_for_printer(self, printer_name, token):

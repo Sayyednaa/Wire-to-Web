@@ -23,4 +23,8 @@ urlpatterns = [
     path('api/agent/jobs/', views.agent_jobs_api, name='agent_jobs'),
     path('api/agent/job/<int:job_id>/download/', views.agent_download_job_api, name='agent_download_job'),
     path('api/agent/job/<int:job_id>/status/', views.agent_update_job_status_api, name='agent_update_job_status'),
+
+    # Canvas routes
+    path('canvas/', views.canvas_editor_view, name='canvas_editor'),
+    path('canvas/print/', views.canvas_print_api, name='canvas_print'),
 ]

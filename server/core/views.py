@@ -501,3 +501,66 @@ def agent_update_job_status_api(request, job_id):
 
     job.save()
     return JsonResponse({'status': 'updated'})
+
+
+# --- Canvas Editor Views ---
+
+@login_required
+def canvas_editor_view(request):
+    printers = Printer.objects.filter(user=request.user, is_active=True)
+    user_auth_token = signing.dumps({'user_id': request.user.id})
+    return render(request, 'core/canvas.html', {
+        'printers': printers,
+        'user_auth_token': user_auth_token
+    })
+
+
+@csrf_exempt
+@login_required
+def canvas_print_api(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=400)
+    
+    pdf_file = request.FILES.get('file')
+    printer_id = request.POST.get('printer')
+    
+    if not pdf_file or not printer_id:
+        return JsonResponse({'error': 'Missing file or printer selection'}, status=400)
+        
+    printer = get_object_or_404(Printer, id=printer_id, user=request.user)
+    
+    # Create Document
+    doc = Document.objects.create(
+        user=request.user,
+        file=pdf_file,
+        file_size=pdf_file.size,
+        original_name="canvas_document.pdf"
+    )
+    
+    # Extract options
+    copies = int(request.POST.get('copies', 1))
+    paper_size = request.POST.get('paper_size', 'A4')
+    orientation = request.POST.get('orientation', 'PORTRAIT')
+    color_mode = request.POST.get('color_mode', 'MONO')
+    duplex = request.POST.get('duplex', 'SIMPLEX')
+    quality = request.POST.get('quality', 'NORMAL')
+    
+    # Create PrintJob
+    job = PrintJob.objects.create(
+        user=request.user,
+        printer=printer,
+        document=doc,
+        copies=copies,
+        paper_size=paper_size,
+        orientation=orientation,
+        color_mode=color_mode,
+        duplex=duplex,
+        quality=quality,
+        status='PENDING'
+    )
+    
+    return JsonResponse({
+        'success': True,
+        'job_id': job.id,
+        'redirect_url': '/'
+    })
