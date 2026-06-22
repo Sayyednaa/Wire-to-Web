@@ -499,9 +499,10 @@ def agent_update_job_status_api(request, job_id):
     if error_message:
         job.error_message = error_message
     
-    if status == 'COMPLETED':
-        job.completed_at = timezone.now()
-        # Clean up file on success immediately
+    if status in ['COMPLETED', 'CANCELLED']:
+        if status == 'COMPLETED':
+            job.completed_at = timezone.now()
+        # Clean up file on success or cancel immediately
         if job.document.file:
             try:
                 if os.path.exists(job.document.file.path):
