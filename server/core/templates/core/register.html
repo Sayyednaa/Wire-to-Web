@@ -1,0 +1,62 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Sign up - CloudPrintHub{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <h2>Create your account</h2>
+    <p class="auth-subtitle">Join CloudPrintHub today and start printing</p>
+
+    <form method="post" action="{% url 'register' %}">
+      {% csrf_token %}
+      
+      {% if form.non_field_errors %}
+        <div class="errorlist" style="margin-bottom: 16px;">
+          {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="form-group">
+        <label for="id_name">Full Name</label>
+        <input type="text" name="name" required id="id_name" class="form-control" placeholder="John Doe" value="{{ form.name.value|default:'' }}">
+        {% if form.name.errors %}
+          <div class="errorlist">{{ form.name.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="id_username">Username</label>
+        <input type="text" name="username" required id="id_username" class="form-control" placeholder="johndoe" value="{{ form.username.value|default:'' }}">
+        {% if form.username.errors %}
+          <div class="errorlist">{{ form.username.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="id_email">Email Address</label>
+        <input type="email" name="email" required id="id_email" class="form-control" placeholder="john@example.com" value="{{ form.email.value|default:'' }}">
+        {% if form.email.errors %}
+          <div class="errorlist">{{ form.email.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="id_password">Password</label>
+        <input type="password" name="password" required id="id_password" class="form-control" placeholder="••••••••">
+        {% if form.password.errors %}
+          <div class="errorlist">{{ form.password.errors }}</div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;">Create Account</button>
+    </form>
+
+    <p style="font-size: 14px; text-align: center; margin-top: 24px; color: var(--color-muted);">
+      Already have an account? <a href="{% url 'login' %}" style="color: var(--color-primary); font-weight: 600;">Sign in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

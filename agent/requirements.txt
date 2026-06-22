@@ -1,0 +1,5 @@
+requests
+pywin32
+python-dotenv
+watchdog
+psutil

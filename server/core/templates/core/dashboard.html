@@ -1,0 +1,471 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Dashboard - CloudPrintHub{% endblock %}
+
+{% block content %}
+<div class="container section-padding" style="padding-top: 40px;">
+  
+  <!-- Saturated Stat Cards -->
+  <div class="card-grid" style="margin-bottom: 40px;">
+    
+    <!-- Active Jobs (Pink) -->
+    <div class="feature-card feature-card-pink">
+      <div>
+        <h4>Active Queue</h4>
+        <p style="font-size: 14px; opacity: 0.9; margin-top: 4px;">Jobs currently processing or pending</p>
+      </div>
+      <div class="card-stat" id="stat-active-jobs">
+        <span class="active-count-js">{{ active_jobs_count }}</span>
+      </div>
+    </div>
+
+    <!-- Connected Devices (Teal) -->
+    <div class="feature-card feature-card-teal">
+      <div>
+        <h4>Printers</h4>
+        <p style="font-size: 14px; opacity: 0.9; margin-top: 4px;">Active / total registered devices</p>
+      </div>
+      <div class="card-stat" id="stat-printers">
+        <span class="online-count-js">{{ online_printers_count }}</span><span style="font-size: 24px; opacity: 0.7;">/{{ printers.count }}</span>
+      </div>
+    </div>
+
+    <!-- Printed History (Lavender) -->
+    <div class="feature-card feature-card-lavender">
+      <div>
+        <h4>Printed Documents</h4>
+        <p style="font-size: 14px; opacity: 0.8; margin-top: 4px;">Successfully printed file count</p>
+      </div>
+      <div class="card-stat" id="stat-completed-jobs">
+        <span class="completed-count-js">{{ completed_jobs_count }}</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="dashboard-grid">
+    
+    <!-- Left Column: Printers List & Job Queue -->
+    <div>
+      
+      <!-- Printers Section -->
+      <div class="dashboard-title-row">
+        <h2>Your Printers</h2>
+        <a href="#setup-guide" class="btn btn-secondary btn-sm" style="height:36px; padding: 6px 12px; border-radius: var(--rounded-pill);">Add Printer</a>
+      </div>
+
+      <div class="table-responsive" style="margin-bottom: 40px;">
+        <table class="table" id="printers-table">
+          <thead>
+            <tr>
+              <th>Printer Name</th>
+              <th>Computer</th>
+              <th>Windows User</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for printer in printers %}
+              <tr data-printer-id="{{ printer.id }}">
+                <td style="font-weight: 600; color: var(--color-ink);">{{ printer.name }}</td>
+                <td>{{ printer.computer_name|default:"-" }}</td>
+                <td>{{ printer.windows_username|default:"-" }}</td>
+                <td>
+                  <span class="badge badge-printer-status {% if printer.status == 'ONLINE' %}badge-online{% elif printer.status == 'OFFLINE' %}badge-offline{% elif printer.status == 'BUSY' %}badge-busy{% else %}badge-error{% endif %}">
+                    {{ printer.get_status_display }}
+                  </span>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 8px;">
+                    <a href="{% url 'printer_toggle' printer.id %}" class="btn btn-secondary btn-sm" style="height: 28px; padding: 4px 10px; font-size: 12px;">
+                      {% if printer.is_active %}Disable{% else %}Enable{% endif %}
+                    </a>
+                    <a href="{% url 'printer_delete' printer.id %}" class="btn btn-danger btn-sm" style="height: 28px; padding: 4px 10px; font-size: 12px;" onclick="return confirm('Are you sure you want to delete this printer?')">
+                      Delete
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--color-muted); padding: 32px;">
+                  No printers registered yet. Install the Windows Agent to register.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Job History Section -->
+      <div class="dashboard-title-row">
+        <h2>Print Queue & History</h2>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table" id="jobs-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>File Name</th>
+              <th>Printer</th>
+              <th>Options</th>
+              <th>Created At</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for job in recent_jobs %}
+              <tr data-job-id="{{ job.id }}">
+                <td>#{{ job.id }}</td>
+                <td style="font-weight: 600; color: var(--color-ink);">{{ job.document.original_name }}</td>
+                <td>{{ job.printer.name }}</td>
+                <td style="font-size: 12px; color: var(--color-muted);">
+                  {{ job.copies }} copy{% if job.copies > 1 %}ies{% endif %}, {{ job.get_paper_size_display }}, {{ job.get_orientation_display }}, {{ job.get_color_mode_display }}
+                </td>
+                <td>{{ job.created_at|date:"Y-m-d H:i:s" }}</td>
+                <td>
+                  <span class="badge badge-job-status {% if job.status == 'COMPLETED' %}badge-online{% elif job.status == 'PENDING' %}badge-busy{% elif job.status == 'FAILED' or job.status == 'CANCELLED' %}badge-error{% else %}badge-offline{% endif %}">
+                    {{ job.get_status_display }}
+                  </span>
+                  {% if job.error_message %}
+                    <div style="font-size: 11px; color: var(--color-error); margin-top: 4px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help; display: block;" title="{{ job.error_message }}">
+                      Err: {{ job.error_message }}
+                    </div>
+                  {% endif %}
+                </td>
+                <td>
+                  <div style="display: flex; gap: 8px;">
+                    {% if job.status == 'PENDING' or job.status == 'DOWNLOADED' or job.status == 'PRINTING' %}
+                      <a href="{% url 'job_cancel' job.id %}" class="btn btn-secondary btn-sm" style="height: 28px; padding: 4px 10px; font-size: 12px;">Cancel</a>
+                    {% endif %}
+                    {% if job.status == 'FAILED' or job.status == 'CANCELLED' %}
+                      {% if job.document.file %}
+                        <a href="{% url 'job_retry' job.id %}" class="btn btn-secondary btn-sm" style="height: 28px; padding: 4px 10px; font-size: 12px; background-color: var(--color-surface-soft);">Retry</a>
+                      {% endif %}
+                    {% endif %}
+                    <a href="{% url 'job_delete' job.id %}" class="btn btn-danger btn-sm" style="height: 28px; padding: 4px 10px; font-size: 12px;" onclick="return confirm('Delete this job? This will delete the metadata.')">Delete</a>
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--color-muted); padding: 32px;">
+                  No print jobs yet. Upload a document to start.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Print Forms & Setup Instructions -->
+    <div>
+
+      <!-- User Profile Card -->
+      <div class="card" style="background-color: var(--color-surface-card); border-color: var(--color-hairline); margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+          <div style="width: 48px; height: 48px; border-radius: var(--rounded-pill); background-color: var(--color-brand-pink); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px;">
+            {{ user.first_name|default:user.username|slice:":1"|upper }}
+          </div>
+          <div>
+            <h3 style="font-size: 18px; margin-bottom: 2px; letter-spacing: -0.3px;">{{ user.get_full_name|default:user.username }}</h3>
+            <p style="font-size: 13px; color: var(--color-muted);">{{ user.email }}</p>
+          </div>
+        </div>
+        <div style="border-top: 1px solid var(--color-hairline); padding-top: 12px; font-size: 13px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: var(--color-muted);">Username:</span>
+            <span style="font-weight: 600; color: var(--color-ink);">{{ user.username }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+            <span style="color: var(--color-muted);">Member Since:</span>
+            <span style="font-weight: 600; color: var(--color-ink);">{{ user.date_joined|date:"F Y" }}</span>
+          </div>
+          <div style="margin-top: 12px; border-top: 1px dashed var(--color-hairline); padding-top: 12px;">
+            <label style="font-weight: 600; font-size: 12px; color: var(--color-muted); display: block; margin-bottom: 6px;">Your API Token</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="api-token" readonly value="{{ user_auth_token }}" class="form-control" style="height: 32px; font-size: 11px; padding: 6px; font-family: monospace; background-color: var(--color-canvas);">
+              <button onclick="copyToken()" class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12px; border-radius: var(--rounded-md); display: flex; align-items: center; justify-content: center;">Copy</button>
+            </div>
+            <span id="copy-success" style="font-size: 11px; color: var(--color-success); display: none; margin-top: 4px;">Copied to clipboard!</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Upload & Job Form -->
+      <div class="card" style="background-color: var(--color-surface-card); border-color: var(--color-hairline); margin-bottom: 40px;">
+        <h3 style="margin-bottom: 20px;">Send a Print Job</h3>
+        
+        {% if not uploaded_doc %}
+          <!-- Step 1: Upload file -->
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="upload_file" value="1">
+            
+            <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+              <div class="upload-icon">📄</div>
+              <h4 style="margin-bottom: 4px;">Upload PDF Document</h4>
+              <p style="font-size: 12px; color: var(--color-muted);">Drag and drop here, or click to browse</p>
+              <input type="file" name="file" id="file-input" style="display: none;" onchange="this.form.submit()">
+            </div>
+            
+            {% if upload_form.file.errors %}
+              <div class="errorlist" style="margin-bottom: 16px;">{{ upload_form.file.errors }}</div>
+            {% endif %}
+          </form>
+        {% else %}
+          <!-- Step 2: Configure job -->
+          <div style="background-color: var(--color-canvas); padding: 16px; border-radius: var(--rounded-md); margin-bottom: 24px; border: 1px solid var(--color-hairline);">
+            <div style="font-size: 12px; color: var(--color-muted); text-transform: uppercase; font-weight: 600;">Uploaded File</div>
+            <div style="font-weight: 600; color: var(--color-ink); word-break: break-all; margin-top: 4px;">{{ uploaded_doc.original_name }}</div>
+            <div style="font-size: 13px; color: var(--color-muted); margin-top: 2px;">{{ uploaded_doc.file_size|filesizeformat }}</div>
+          </div>
+
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="create_job" value="1">
+            <input type="hidden" name="document_id" value="{{ uploaded_doc.id }}">
+
+            <div class="form-group">
+              <label for="id_printer">Select Printer</label>
+              {{ job_form.printer }}
+              {% if job_form.printer.errors %}
+                <div class="errorlist">{{ job_form.printer.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="form-group">
+              <label for="id_copies">Copies (1 - 999)</label>
+              <input type="number" name="copies" id="id_copies" min="1" max="999" value="1" class="form-control">
+              {% if job_form.copies.errors %}
+                <div class="errorlist">{{ job_form.copies.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="form-group">
+              <label for="id_paper_size">Paper Size</label>
+              {{ job_form.paper_size }}
+              {% if job_form.paper_size.errors %}
+                <div class="errorlist">{{ job_form.paper_size.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label for="id_orientation">Orientation</label>
+                {{ job_form.orientation }}
+              </div>
+              <div class="form-group">
+                <label for="id_color_mode">Color Mode</label>
+                {{ job_form.color_mode }}
+              </div>
+            </div>
+
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label for="id_duplex">Duplex</label>
+                {{ job_form.duplex }}
+              </div>
+              <div class="form-group">
+                <label for="id_quality">Quality</label>
+                {{ job_form.quality }}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="id_page_range">Page Range (e.g. 1-5, 8)</label>
+              <input type="text" name="page_range" id="id_page_range" class="form-control" placeholder="All Pages">
+              {% if job_form.page_range.errors %}
+                <div class="errorlist">{{ job_form.page_range.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <a href="{% url 'dashboard' %}" class="btn btn-secondary" style="flex: 1;">Cancel</a>
+              <button type="submit" class="btn btn-primary" style="flex: 2;">Print Document</button>
+            </div>
+
+          </form>
+        {% endif %}
+
+      </div>
+
+      <!-- Windows Agent Setup Guide -->
+      <div id="setup-guide" class="card" style="background-color: var(--color-surface-soft); border-color: var(--color-hairline);">
+        <h3 style="margin-bottom: 16px;">Setup Windows Agent</h3>
+        <p style="font-size: 14px; margin-bottom: 16px; color: var(--color-body);">
+          To print files to your home or office printer, download and run the Windows Agent on the connected computer.
+        </p>
+        
+        <div style="background-color: var(--color-canvas); padding: 16px; border-radius: var(--rounded-md); border: 1px solid var(--color-hairline); margin-bottom: 16px;">
+          <div style="font-size: 12px; font-weight:600; text-transform: uppercase; color: var(--color-muted); margin-bottom: 8px;">Agent Run Instructions</div>
+          <ol style="font-size: 13px; padding-left: 20px; color: var(--color-body); display: flex; flex-direction: column; gap: 8px;">
+            <li>Ensure Python 3.12+ is installed on the host PC.</li>
+            <li>Configure the agent settings in the local config file or command prompt.</li>
+            <li>Use the same credentials as this account to log in the agent.</li>
+            <li>The agent will automatically register your locally connected printers.</li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Ensure django forms render using custom form styling classes */
+  select {
+    width: 100%;
+    height: 44px;
+    padding: 12px 16px;
+    font-size: 16px;
+    background-color: var(--color-canvas);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--rounded-md);
+    color: var(--color-ink);
+  }
+  select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Simple Helper to calculate counts
+  function updateStatBoxes(jobs, printers) {
+    // 1. Active Jobs
+    const activeJobs = jobs.filter(j => ['PENDING', 'DOWNLOADED', 'PRINTING'].includes(j.status)).length;
+    document.querySelectorAll('.active-count-js').forEach(el => el.textContent = activeJobs);
+
+    // 2. Online Printers
+    const onlinePrinters = printers.filter(p => p.status === 'Online' && p.is_active).length;
+    document.querySelectorAll('.online-count-js').forEach(el => el.textContent = onlinePrinters);
+
+    // 3. Completed Jobs
+    const completedJobs = jobs.filter(j => j.status === 'COMPLETED').length;
+    document.querySelectorAll('.completed-count-js').forEach(el => el.textContent = completedJobs);
+  }
+
+  // Polling function
+  function pollStatus() {
+    fetch("{% url 'api_status_json' %}")
+      .then(response => response.json())
+      .then(data => {
+        // Update stats
+        updateStatBoxes(data.jobs, data.printers);
+
+        // Update Printers Table UI
+        const printersTableBody = document.querySelector("#printers-table tbody");
+        if (printersTableBody && data.printers.length > 0) {
+          // If the table was empty, reload page to draw full row structures easily
+          const wasEmpty = printersTableBody.querySelector("td[colspan]");
+          if (wasEmpty) {
+            window.location.reload();
+            return;
+          }
+
+          data.printers.forEach(printer => {
+            const row = printersTableBody.querySelector(`tr[data-printer-id="${printer.id}"]`);
+            if (row) {
+              // Update status cell
+              const statusCell = row.cells[3];
+              let badgeClass = 'badge-offline';
+              if (printer.status === 'Online') badgeClass = 'badge-online';
+              else if (printer.status === 'Busy') badgeClass = 'badge-busy';
+              else if (printer.status === 'Error') badgeClass = 'badge-error';
+
+              statusCell.innerHTML = `<span class="badge ${badgeClass}">${printer.status}</span>`;
+            }
+          });
+        }
+
+        // Update Jobs Table UI
+        const jobsTableBody = document.querySelector("#jobs-table tbody");
+        if (jobsTableBody && data.jobs.length > 0) {
+          const wasEmpty = jobsTableBody.querySelector("td[colspan]");
+          if (wasEmpty) {
+            window.location.reload();
+            return;
+          }
+
+          data.jobs.forEach(job => {
+            const row = jobsTableBody.querySelector(`tr[data-job-id="${job.id}"]`);
+            if (row) {
+              // Update status cell
+              const statusCell = row.cells[5];
+              let badgeClass = 'badge-offline';
+              if (job.status === 'COMPLETED') badgeClass = 'badge-online';
+              else if (job.status === 'PENDING') badgeClass = 'badge-busy';
+              else if (['FAILED', 'CANCELLED'].includes(job.status)) badgeClass = 'badge-error';
+              
+              let statusHTML = `<span class="badge ${badgeClass}">${job.status}</span>`;
+              if (job.error_message) {
+                statusHTML += `<div style="font-size: 11px; color: var(--color-error); margin-top: 4px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help; display: block;" title="${job.error_message}">Err: ${job.error_message}</div>`;
+              }
+              statusCell.innerHTML = statusHTML;
+
+              // If status completed or cancelled, or printing, change actions cell
+              const actionsCell = row.cells[6];
+              let actionButtonsHTML = '';
+              if (['PENDING', 'DOWNLOADED', 'PRINTING'].includes(job.status)) {
+                actionButtonsHTML += `<a href="/job/${job.id}/cancel/" class="btn btn-secondary btn-sm" style="height: 28px; padding: 4px 10px; font-size: 12px;">Cancel</a> `;
+              }
+              if (['FAILED', 'CANCELLED'].includes(job.status)) {
+                // If it can be retried, we show retry (check if row had retry previously, or assume file is present)
+                // For simplicity, we just reload if status transitions to completed/failed to fetch new button states perfectly
+              }
+              actionButtonsHTML += `<a href="/job/${job.id}/delete/" class="btn btn-danger btn-sm" style="height: 28px; padding: 4px 10px; font-size: 12px;" onclick="return confirm('Delete this job? This will delete the metadata.')">Delete</a>`;
+              
+              // We'll let the buttons update naturally on page refresh, or update simple cancellations dynamically
+              if (['PENDING', 'DOWNLOADED', 'PRINTING', 'CANCELLED', 'COMPLETED'].includes(job.status)) {
+                // Just update simple text status to avoid state mismatches
+              }
+            }
+          });
+        }
+      })
+      .catch(err => console.error("Error polling statuses:", err));
+  }
+
+  // Initial update
+  document.addEventListener("DOMContentLoaded", () => {
+    // Generate initial stat counts
+    const jobs = [
+      {% for job in recent_jobs %}
+        { status: "{{ job.status }}" },
+      {% endfor %}
+    ];
+    const printers = [
+      {% for printer in printers %}
+        { status: "{{ printer.get_status_display }}", is_active: {{ printer.is_active|yesno:"true,false" }} },
+      {% endfor %}
+    ];
+    updateStatBoxes(jobs, printers);
+
+    // Poll every 5 seconds
+    setInterval(pollStatus, 5000);
+  });
+
+  function copyToken() {
+    const copyText = document.getElementById("api-token");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(copyText.value)
+      .then(() => {
+        const successText = document.getElementById("copy-success");
+        successText.style.display = "block";
+        setTimeout(() => { successText.style.display = "none"; }, 2000);
+      });
+  }
+</script>
+{% endblock %}

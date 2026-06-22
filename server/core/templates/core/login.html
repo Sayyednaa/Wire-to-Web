@@ -1,0 +1,46 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Sign in - CloudPrintHub{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <h2>Sign in</h2>
+    <p class="auth-subtitle">Print remotely from anywhere in the world</p>
+
+    <form method="post" action="{% url 'login' %}">
+      {% csrf_token %}
+      
+      {% if form.non_field_errors %}
+        <div class="errorlist" style="margin-bottom: 16px;">
+          {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="form-group">
+        <label for="id_username">Username or Email</label>
+        <input type="text" name="username" autofocus required id="id_username" class="form-control" placeholder="Enter your username or email">
+        {% if form.username.errors %}
+          <div class="errorlist">{{ form.username.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="id_password">Password</label>
+        <input type="password" name="password" required id="id_password" class="form-control" placeholder="••••••••">
+        {% if form.password.errors %}
+          <div class="errorlist">{{ form.password.errors }}</div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;">Sign in</button>
+    </form>
+
+    <p style="font-size: 14px; text-align: center; margin-top: 24px; color: var(--color-muted);">
+      Don't have an account? <a href="{% url 'register' %}" style="color: var(--color-primary); font-weight: 600;">Sign up</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

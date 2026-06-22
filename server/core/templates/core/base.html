@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CloudPrintHub - Print Remotely{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'core/css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <div class="container nav-container">
+      <a href="{% url 'dashboard' %}" class="logo-group">
+        <div class="logo-icon"></div>
+        <span class="logo-text">CloudPrintHub</span>
+      </a>
+
+      <div class="nav-links">
+        {% if user.is_authenticated %}
+          <a href="{% url 'dashboard' %}" class="nav-link active">Dashboard</a>
+        {% endif %}
+      </div>
+
+      <div class="nav-actions">
+        {% if user.is_authenticated %}
+          <span class="nav-link" style="font-size: 13px;">Hi, <strong>{% if user.first_name %}{{ user.first_name }}{% else %}{{ user.username }}{% endif %}</strong></span>
+          <a href="{% url 'logout' %}" class="btn btn-secondary btn-sm" style="height:36px; padding: 6px 12px;">Sign out</a>
+        {% else %}
+          <a href="{% url 'login' %}" class="btn btn-link nav-link">Sign in</a>
+          <a href="{% url 'register' %}" class="btn btn-primary btn-sm" style="height:36px; padding: 6px 12px;">Try free</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Body Content -->
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Cream-tinted Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2026 CloudPrintHub. All rights reserved. Built with passion & clay.</p>
+    </div>
+  </footer>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
