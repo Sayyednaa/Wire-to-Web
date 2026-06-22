@@ -1,2 +1,5 @@
 .pdf
 .sqlite3
+.pyc
+.exe
+.gitignore
