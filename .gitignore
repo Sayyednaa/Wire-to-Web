@@ -1,5 +1,37 @@
-.pdf
-.sqlite3
-.pyc
-.exe
-.gitignore
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# PyInstaller / Compilation Outputs
+agent/build/
+agent/dist/
+agent/agent.spec
+agent/install_agent.spec
+*.spec
+
+# Local Agent Configs
+agent/config.json
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Django files
+server/db.sqlite3
+server/media/
+server/staticfiles/
+
+# IDE / Editor configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+Desktop.ini
+*.tmp
