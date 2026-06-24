@@ -43,6 +43,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Initialize scaling and listen for window resize
     updateCanvasScale();
     window.addEventListener("resize", updateCanvasScale);
+
+    // Check if there is a pending image from the dashboard redirect
+    const pendingImage = sessionStorage.getItem("pending_canvas_image");
+    if (pendingImage) {
+        createImageElement(pendingImage);
+        sessionStorage.removeItem("pending_canvas_image");
+    }
 });
 
 // --- Page Management ---

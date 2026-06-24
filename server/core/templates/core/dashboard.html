@@ -11,15 +11,15 @@
     
     {% if not uploaded_doc %}
       <!-- Step 1: Upload file -->
-      <form method="post" enctype="multipart/form-data">
+      <form method="post" enctype="multipart/form-data" id="upload-form">
         {% csrf_token %}
         <input type="hidden" name="upload_file" value="1">
         
-        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
           <div class="upload-icon">📄</div>
           <h4 style="margin-bottom: 4px;">Upload PDF Document</h4>
           <p style="font-size: 12px; color: var(--color-muted);">Drag and drop here, or click to browse</p>
-          <input type="file" name="file" id="file-input" style="display: none;" onchange="this.form.submit()">
+          <input type="file" name="file" id="file-input" style="display: none;" onchange="handleFileSelect(event)">
         </div>
         
         {% if upload_form.file.errors %}
@@ -326,6 +326,28 @@
     </div>
 
   </div>
+
+  <!-- Client-Side Redirect Modal (for non-PDF files) -->
+  <div id="redirect-modal" class="modal-backdrop">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">Print Any Design</h3>
+        <button class="modal-close" onclick="closeRedirectModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-illustration">
+          <div class="illustration-bubble">
+            🎨
+          </div>
+        </div>
+        <p>Selected file is not a PDF. With our <strong>Canvas Designer</strong>, you can easily arrange images, create text layouts, and print them directly in seconds!</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeRedirectModal()">Cancel</button>
+        <a href="{% url 'canvas_editor' %}" class="btn btn-primary">Open Canvas Designer</a>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -345,6 +367,152 @@
   select:focus {
     outline: none;
     border-color: var(--color-primary);
+  }
+
+  /* Modal Backdrop Styling */
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(10, 10, 10, 0.35);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+  .modal-backdrop.show {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  /* Modal Box Styling */
+  .modal-container {
+    background-color: var(--color-surface-soft);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--rounded-xl);
+    width: 90%;
+    max-width: 440px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: translateY(20px);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+  .modal-backdrop.show .modal-container {
+    transform: translateY(0);
+  }
+  
+  /* Header styling */
+  .modal-header {
+    padding: 20px 24px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--color-ink);
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition: color 0.2s ease;
+    padding: 4px;
+  }
+  .modal-close:hover {
+    color: var(--color-ink);
+  }
+  
+  /* Body styling */
+  .modal-body {
+    padding: 12px 24px 24px;
+    text-align: center;
+  }
+  
+  .modal-illustration {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  
+  .illustration-bubble {
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, var(--color-brand-peach) 0%, var(--color-brand-pink) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    box-shadow: 0 8px 20px rgba(255, 77, 139, 0.35);
+    animation: floatIcon 3s ease-in-out infinite;
+  }
+  
+  .modal-body p {
+    font-size: 15px;
+    color: var(--color-body);
+    line-height: 1.5;
+  }
+  
+  /* Footer styling */
+  .modal-footer {
+    padding: 16px 24px 20px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    background-color: var(--color-surface-card);
+    border-top: 1px solid var(--color-hairline);
+  }
+  .modal-footer .btn {
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: var(--rounded-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    text-decoration: none;
+  }
+  .modal-footer .btn-secondary {
+    background-color: transparent;
+    border: 1px solid var(--color-hairline);
+    color: var(--color-body);
+  }
+  .modal-footer .btn-secondary:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    opacity: 1;
+  }
+  .modal-footer .btn-primary {
+    background-color: var(--color-brand-pink);
+    border: 1px solid var(--color-brand-pink);
+    color: white;
+    flex-grow: 1;
+    text-align: center;
+  }
+  .modal-footer .btn-primary:hover {
+    background-color: #ff337a;
+    border-color: #ff337a;
+    opacity: 1;
+  }
+  
+  @keyframes floatIcon {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
   }
 </style>
 {% endblock %}
@@ -447,6 +615,54 @@
       .catch(err => console.error("Error polling statuses:", err));
   }
 
+  function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      // Clear event input value so it doesn't get uploaded as PDF
+      event.target.value = "";
+
+      // Load file as base64 DataURL and save to sessionStorage for automatic Canvas loading
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          sessionStorage.setItem("pending_canvas_image", e.target.result);
+        } catch (err) {
+          console.warn("Could not save file to sessionStorage (likely size limit exceeded):", err);
+        }
+      };
+      reader.readAsDataURL(file);
+
+      showRedirectModal();
+      return;
+    }
+    
+    event.target.form.submit();
+  }
+
+  function showRedirectModal() {
+    const modal = document.getElementById("redirect-modal");
+    if (modal) {
+      modal.style.display = "flex";
+      setTimeout(() => {
+        modal.classList.add("show");
+      }, 10);
+    }
+  }
+
+  function closeRedirectModal() {
+    const modal = document.getElementById("redirect-modal");
+    if (modal) {
+      modal.classList.remove("show");
+      setTimeout(() => {
+        modal.style.display = "none";
+      }, 300);
+    }
+    // Clear the pending image in case the user cancelled the redirection
+    sessionStorage.removeItem("pending_canvas_image");
+  }
+
   // Initial update
   document.addEventListener("DOMContentLoaded", () => {
     // Generate initial stat counts
@@ -464,6 +680,38 @@
 
     // Poll every 5 seconds
     setInterval(pollStatus, 5000);
+
+    // Setup drag and drop for upload zone
+    const uploadZone = document.querySelector(".upload-zone");
+    if (uploadZone) {
+      uploadZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadZone.style.borderColor = "var(--color-brand-pink)";
+      });
+      uploadZone.addEventListener("dragleave", () => {
+        uploadZone.style.borderColor = "var(--color-brand-peach)";
+      });
+      uploadZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadZone.style.borderColor = "var(--color-brand-peach)";
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          const fileInput = document.getElementById("file-input");
+          fileInput.files = files;
+          handleFileSelect({ target: fileInput });
+        }
+      });
+    }
+
+    // Dismiss redirect modal on clicking backdrop
+    const redirectModal = document.getElementById("redirect-modal");
+    if (redirectModal) {
+      redirectModal.addEventListener("click", (e) => {
+        if (e.target === redirectModal) {
+          closeRedirectModal();
+        }
+      });
+    }
   });
 
   function copyToken() {
