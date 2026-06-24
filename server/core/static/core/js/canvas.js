@@ -298,6 +298,16 @@ function createImageElement(src) {
 
 // --- Drag and Resize Engine ---
 
+function getEventCoords(e) {
+    if (e.touches && e.touches.length > 0) {
+        return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+    }
+    if (e.changedTouches && e.changedTouches.length > 0) {
+        return { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY };
+    }
+    return { clientX: e.clientX, clientY: e.clientY };
+}
+
 function addResizeHandles(el) {
     const positions = ["nw", "ne", "sw", "se", "n", "s", "e", "w"];
     positions.forEach(pos => {
@@ -379,26 +389,34 @@ function toggleCropMode() {
         });
 
         // Add dragging to crop box
-        cropBox.addEventListener("mousedown", (e) => {
+        const startCropBoxDrag = (e) => {
             if (e.target.classList.contains("crop-handle")) return;
             e.stopPropagation();
-            e.preventDefault();
+            if (e.cancelable) {
+                e.preventDefault();
+            }
 
             const imgL = parseFloat(img.style.left) || 0;
             const imgT = parseFloat(img.style.top) || 0;
             const imgW = img.offsetWidth;
             const imgH = img.offsetHeight;
 
-            const startX = e.clientX;
-            const startY = e.clientY;
+            const coords = getEventCoords(e);
+            const startX = coords.clientX;
+            const startY = coords.clientY;
             const startCbLeft = parseFloat(cropBox.style.left) || 0;
             const startCbTop = parseFloat(cropBox.style.top) || 0;
             const cbW = cropBox.offsetWidth;
             const cbH = cropBox.offsetHeight;
 
             function onCropBoxMove(moveEvent) {
-                const dx = moveEvent.clientX - startX;
-                const dy = moveEvent.clientY - startY;
+                if (moveEvent.cancelable) {
+                    moveEvent.preventDefault();
+                }
+
+                const moveCoords = getEventCoords(moveEvent);
+                const dx = moveCoords.clientX - startX;
+                const dy = moveCoords.clientY - startY;
 
                 let newCbLeft = startCbLeft + dx;
                 let newCbTop = startCbTop + dy;
@@ -413,18 +431,27 @@ function toggleCropMode() {
 
             function onCropBoxUp() {
                 window.removeEventListener("mousemove", onCropBoxMove);
+                window.removeEventListener("touchmove", onCropBoxMove);
                 window.removeEventListener("mouseup", onCropBoxUp);
+                window.removeEventListener("touchend", onCropBoxUp);
             }
 
             window.addEventListener("mousemove", onCropBoxMove);
+            window.addEventListener("touchmove", onCropBoxMove, { passive: false });
             window.addEventListener("mouseup", onCropBoxUp);
-        });
+            window.addEventListener("touchend", onCropBoxUp);
+        };
+
+        cropBox.addEventListener("mousedown", startCropBoxDrag);
+        cropBox.addEventListener("touchstart", startCropBoxDrag, { passive: false });
 
         // Add resizing to crop handles
         cropBox.querySelectorAll(".crop-handle").forEach(handle => {
-            handle.addEventListener("mousedown", (e) => {
+            const startCropHandleResize = (e) => {
                 e.stopPropagation();
-                e.preventDefault();
+                if (e.cancelable) {
+                    e.preventDefault();
+                }
 
                 const pos = handle.dataset.handle;
                 const imgL = parseFloat(img.style.left) || 0;
@@ -432,16 +459,22 @@ function toggleCropMode() {
                 const imgW = img.offsetWidth;
                 const imgH = img.offsetHeight;
 
-                const startX = e.clientX;
-                const startY = e.clientY;
+                const coords = getEventCoords(e);
+                const startX = coords.clientX;
+                const startY = coords.clientY;
                 const startCbLeft = parseFloat(cropBox.style.left) || 0;
                 const startCbTop = parseFloat(cropBox.style.top) || 0;
                 const startCbWidth = cropBox.offsetWidth;
                 const startCbHeight = cropBox.offsetHeight;
 
                 function onCropHandleMove(moveEvent) {
-                    const dx = moveEvent.clientX - startX;
-                    const dy = moveEvent.clientY - startY;
+                    if (moveEvent.cancelable) {
+                        moveEvent.preventDefault();
+                    }
+
+                    const moveCoords = getEventCoords(moveEvent);
+                    const dx = moveCoords.clientX - startX;
+                    const dy = moveCoords.clientY - startY;
 
                     let newCbLeft = startCbLeft;
                     let newCbTop = startCbTop;
@@ -502,12 +535,19 @@ function toggleCropMode() {
 
                 function onCropHandleUp() {
                     window.removeEventListener("mousemove", onCropHandleMove);
+                    window.removeEventListener("touchmove", onCropHandleMove);
                     window.removeEventListener("mouseup", onCropHandleUp);
+                    window.removeEventListener("touchend", onCropHandleUp);
                 }
 
                 window.addEventListener("mousemove", onCropHandleMove);
+                window.addEventListener("touchmove", onCropHandleMove, { passive: false });
                 window.addEventListener("mouseup", onCropHandleUp);
-            });
+                window.addEventListener("touchend", onCropHandleUp);
+            };
+
+            handle.addEventListener("mousedown", startCropHandleResize);
+            handle.addEventListener("touchstart", startCropHandleResize, { passive: false });
         });
 
         selectedElement.appendChild(cropBox);
@@ -555,7 +595,7 @@ function toggleCropMode() {
 }
 
 function setupElementDragAndResize(el) {
-    el.addEventListener("mousedown", (e) => {
+    const startDrag = (e) => {
         // Stop drag if clicking inside text-content to type, or clicking handles
         if (e.target.classList.contains("text-content") && document.activeElement === e.target) {
             return;
@@ -571,14 +611,20 @@ function setupElementDragAndResize(el) {
 
         selectElement(el, e);
         
-        let startX = e.clientX;
-        let startY = e.clientY;
+        const coords = getEventCoords(e);
+        let startX = coords.clientX;
+        let startY = coords.clientY;
         let startLeft = parseInt(el.style.left) || 0;
         let startTop = parseInt(el.style.top) || 0;
         
         function onMouseMove(moveEvent) {
-            let dx = moveEvent.clientX - startX;
-            let dy = moveEvent.clientY - startY;
+            if (moveEvent.cancelable) {
+                moveEvent.preventDefault();
+            }
+
+            const moveCoords = getEventCoords(moveEvent);
+            let dx = moveCoords.clientX - startX;
+            let dy = moveCoords.clientY - startY;
             
             let newLeft = startLeft + dx;
             let newTop = startTop + dy;
@@ -596,18 +642,27 @@ function setupElementDragAndResize(el) {
         
         function onMouseUp() {
             window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("touchmove", onMouseMove);
             window.removeEventListener("mouseup", onMouseUp);
+            window.removeEventListener("touchend", onMouseUp);
         }
         
         window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("touchmove", onMouseMove, { passive: false });
         window.addEventListener("mouseup", onMouseUp);
-    });
+        window.addEventListener("touchend", onMouseUp);
+    };
+
+    el.addEventListener("mousedown", startDrag);
+    el.addEventListener("touchstart", startDrag, { passive: false });
     
     // Setup handle dragging for resizing
     el.querySelectorAll(".resize-handle").forEach(handle => {
-        handle.addEventListener("mousedown", (e) => {
+        const startResize = (e) => {
             e.stopPropagation();
-            e.preventDefault();
+            if (e.cancelable) {
+                e.preventDefault();
+            }
             
             if (isCropMode) {
                 return;
@@ -616,8 +671,9 @@ function setupElementDragAndResize(el) {
             const position = handle.dataset.handle;
             const img = el.querySelector("img");
             
-            let startX = e.clientX;
-            let startY = e.clientY;
+            const coords = getEventCoords(e);
+            let startX = coords.clientX;
+            let startY = coords.clientY;
             let startLeft = parseInt(el.style.left) || 0;
             let startTop = parseInt(el.style.top) || 0;
             let startWidth = el.offsetWidth;
@@ -625,15 +681,22 @@ function setupElementDragAndResize(el) {
             
             let imgStartWidth, imgStartHeight, imgStartLeft, imgStartTop;
             if (img) {
-                imgStartWidth = parseFloat(img.style.width) || img.offsetWidth;
-                imgStartHeight = parseFloat(img.style.height) || img.offsetHeight;
+                const styleWidth = img.style.width;
+                const styleHeight = img.style.height;
+                imgStartWidth = (styleWidth && styleWidth.endsWith("px")) ? parseFloat(styleWidth) : img.offsetWidth;
+                imgStartHeight = (styleHeight && styleHeight.endsWith("px")) ? parseFloat(styleHeight) : img.offsetHeight;
                 imgStartLeft = parseFloat(img.style.left) || 0;
                 imgStartTop = parseFloat(img.style.top) || 0;
             }
             
             function onMouseMove(moveEvent) {
-                let dx = moveEvent.clientX - startX;
-                let dy = moveEvent.clientY - startY;
+                if (moveEvent.cancelable) {
+                    moveEvent.preventDefault();
+                }
+
+                const moveCoords = getEventCoords(moveEvent);
+                let dx = moveCoords.clientX - startX;
+                let dy = moveCoords.clientY - startY;
                 
                 let newLeft = startLeft;
                 let newTop = startTop;
@@ -705,12 +768,19 @@ function setupElementDragAndResize(el) {
             
             function onMouseUp() {
                 window.removeEventListener("mousemove", onMouseMove);
+                window.removeEventListener("touchmove", onMouseMove);
                 window.removeEventListener("mouseup", onMouseUp);
+                window.removeEventListener("touchend", onMouseUp);
             }
             
             window.addEventListener("mousemove", onMouseMove);
+            window.addEventListener("touchmove", onMouseMove, { passive: false });
             window.addEventListener("mouseup", onMouseUp);
-        });
+            window.addEventListener("touchend", onMouseUp);
+        };
+        
+        handle.addEventListener("mousedown", startResize);
+        handle.addEventListener("touchstart", startResize, { passive: false });
     });
 }
 
