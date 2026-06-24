@@ -6,11 +6,43 @@ let selectedElement = null;
 const PAGE_WIDTH = 794;
 const PAGE_HEIGHT = 1123;
 
+let currentScale = 1;
+
+function updateCanvasScale() {
+    const viewport = document.getElementById("canvas-viewport-area");
+    if (!viewport) return;
+    
+    const viewportWidth = viewport.clientWidth;
+    const padding = window.innerWidth >= 1024 ? 80 : 32;
+    const availableWidth = viewportWidth - padding;
+    
+    if (availableWidth < PAGE_WIDTH) {
+        currentScale = availableWidth / PAGE_WIDTH;
+    } else {
+        currentScale = 1;
+    }
+    
+    document.querySelectorAll(".a4-page-scale-container").forEach(container => {
+        container.style.width = `${PAGE_WIDTH * currentScale}px`;
+        container.style.height = `${PAGE_HEIGHT * currentScale}px`;
+        
+        const page = container.querySelector(".a4-canvas-page");
+        if (page) {
+            page.style.transform = `scale(${currentScale})`;
+            page.style.transformOrigin = "top left";
+        }
+    });
+}
+
 // --- Initialize DOM Event Listeners ---
 
 document.addEventListener("DOMContentLoaded", () => {
     // Initial page event listener
     setupPageEvents(document.getElementById("page-1"));
+    
+    // Initialize scaling and listen for window resize
+    updateCanvasScale();
+    window.addEventListener("resize", updateCanvasScale);
 });
 
 // --- Page Management ---
@@ -44,9 +76,17 @@ function addNewPage() {
     
     const viewport = document.getElementById("canvas-viewport-area");
     
+    const container = document.createElement("div");
+    container.className = "a4-page-scale-container";
+    container.style.width = `${PAGE_WIDTH * currentScale}px`;
+    container.style.height = `${PAGE_HEIGHT * currentScale}px`;
+    container.style.overflow = "visible";
+    
     const newPage = document.createElement("div");
     newPage.className = "a4-canvas-page active-page-border";
     newPage.id = `page-${pageCount}`;
+    newPage.style.transform = `scale(${currentScale})`;
+    newPage.style.transformOrigin = "top left";
     
     // Page counter badge
     const badge = document.createElement("div");
@@ -65,13 +105,15 @@ function addNewPage() {
     };
     newPage.appendChild(deleteBtn);
     
-    viewport.appendChild(newPage);
+    container.appendChild(newPage);
+    viewport.appendChild(container);
+    
     setupPageEvents(newPage);
     setActivePage(pageCount);
     
     // Scroll viewport to the new page
     viewport.scrollTo({
-        top: newPage.offsetTop - 40,
+        top: container.offsetTop - 40,
         behavior: 'smooth'
     });
 }
@@ -80,7 +122,12 @@ function deletePage(pageId) {
     if (confirm("Are you sure you want to delete this page? All elements on this page will be lost.")) {
         const page = document.getElementById(pageId);
         if (page) {
-            page.remove();
+            const container = page.closest(".a4-page-scale-container");
+            if (container) {
+                container.remove();
+            } else {
+                page.remove();
+            }
             reindexPages();
         }
     }
@@ -415,8 +462,8 @@ function toggleCropMode() {
                 }
 
                 const moveCoords = getEventCoords(moveEvent);
-                const dx = moveCoords.clientX - startX;
-                const dy = moveCoords.clientY - startY;
+                const dx = (moveCoords.clientX - startX) / currentScale;
+                const dy = (moveCoords.clientY - startY) / currentScale;
 
                 let newCbLeft = startCbLeft + dx;
                 let newCbTop = startCbTop + dy;
@@ -473,8 +520,8 @@ function toggleCropMode() {
                     }
 
                     const moveCoords = getEventCoords(moveEvent);
-                    const dx = moveCoords.clientX - startX;
-                    const dy = moveCoords.clientY - startY;
+                    const dx = (moveCoords.clientX - startX) / currentScale;
+                    const dy = (moveCoords.clientY - startY) / currentScale;
 
                     let newCbLeft = startCbLeft;
                     let newCbTop = startCbTop;
@@ -623,8 +670,8 @@ function setupElementDragAndResize(el) {
             }
 
             const moveCoords = getEventCoords(moveEvent);
-            let dx = moveCoords.clientX - startX;
-            let dy = moveCoords.clientY - startY;
+            let dx = (moveCoords.clientX - startX) / currentScale;
+            let dy = (moveCoords.clientY - startY) / currentScale;
             
             let newLeft = startLeft + dx;
             let newTop = startTop + dy;
@@ -695,8 +742,8 @@ function setupElementDragAndResize(el) {
                 }
 
                 const moveCoords = getEventCoords(moveEvent);
-                let dx = moveCoords.clientX - startX;
-                let dy = moveCoords.clientY - startY;
+                let dx = (moveCoords.clientX - startX) / currentScale;
+                let dy = (moveCoords.clientY - startY) / currentScale;
                 
                 let newLeft = startLeft;
                 let newTop = startTop;
@@ -826,6 +873,10 @@ async function submitCanvasJob(event) {
             const badges = pageEl.querySelectorAll(".page-badge-counter, .page-delete-btn");
             badges.forEach(b => b.style.display = "none");
             
+            // Temporarily reset transform for clean screenshot
+            const origTransform = pageEl.style.transform;
+            pageEl.style.transform = "none";
+            
             // Render HTML element to canvas
             const canvas = await html2canvas(pageEl, {
                 scale: 2, // High resolution screenshot multiplier
@@ -833,7 +884,8 @@ async function submitCanvasJob(event) {
                 backgroundColor: "#ffffff"
             });
             
-            // Restore badges
+            // Restore transform and badges
+            pageEl.style.transform = origTransform;
             badges.forEach(b => b.style.display = "");
             
             const imgData = canvas.toDataURL("image/jpeg", 0.95);
