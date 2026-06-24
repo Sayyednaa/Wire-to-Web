@@ -4,7 +4,105 @@
 
 {% block content %}
 <div class="container section-padding" style="padding-top: 40px;">
-  
+
+  <!-- Upload & Job Form (At the very top) -->
+  <div class="card" style="background-color: var(--color-surface-card); border-color: var(--color-hairline); margin-bottom: 40px;">
+    <h3 style="margin-bottom: 20px;">Send a Print Job</h3>
+    
+    {% if not uploaded_doc %}
+      <!-- Step 1: Upload file -->
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="upload_file" value="1">
+        
+        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+          <div class="upload-icon">📄</div>
+          <h4 style="margin-bottom: 4px;">Upload PDF Document</h4>
+          <p style="font-size: 12px; color: var(--color-muted);">Drag and drop here, or click to browse</p>
+          <input type="file" name="file" id="file-input" style="display: none;" onchange="this.form.submit()">
+        </div>
+        
+        {% if upload_form.file.errors %}
+          <div class="errorlist" style="margin-bottom: 16px;">{{ upload_form.file.errors }}</div>
+        {% endif %}
+      </form>
+    {% else %}
+      <!-- Step 2: Configure job -->
+      <div style="background-color: var(--color-canvas); padding: 16px; border-radius: var(--rounded-md); margin-bottom: 24px; border: 1px solid var(--color-hairline);">
+        <div style="font-size: 12px; color: var(--color-muted); text-transform: uppercase; font-weight: 600;">Uploaded File</div>
+        <div style="font-weight: 600; color: var(--color-ink); word-break: break-all; margin-top: 4px;">{{ uploaded_doc.original_name }}</div>
+        <div style="font-size: 13px; color: var(--color-muted); margin-top: 2px;">{{ uploaded_doc.file_size|filesizeformat }}</div>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="create_job" value="1">
+        <input type="hidden" name="document_id" value="{{ uploaded_doc.id }}">
+
+        <div class="form-group">
+          <label for="id_printer">Select Printer</label>
+          {{ job_form.printer }}
+          {% if job_form.printer.errors %}
+            <div class="errorlist">{{ job_form.printer.errors }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="id_copies">Copies (1 - 999)</label>
+          <input type="number" name="copies" id="id_copies" min="1" max="999" value="1" class="form-control">
+          {% if job_form.copies.errors %}
+            <div class="errorlist">{{ job_form.copies.errors }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="id_paper_size">Paper Size</label>
+          {{ job_form.paper_size }}
+          {% if job_form.paper_size.errors %}
+            <div class="errorlist">{{ job_form.paper_size.errors }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-row form-row-responsive">
+          <div class="form-group">
+            <label for="id_orientation">Orientation</label>
+            {{ job_form.orientation }}
+          </div>
+          <div class="form-group">
+            <label for="id_color_mode">Color Mode</label>
+            {{ job_form.color_mode }}
+          </div>
+        </div>
+
+        <div class="form-row form-row-responsive">
+          <div class="form-group">
+            <label for="id_duplex">Duplex</label>
+            {{ job_form.duplex }}
+          </div>
+          <div class="form-group">
+            <label for="id_quality">Quality</label>
+            {{ job_form.quality }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="id_page_range">Page Range (e.g. 1-5, 8)</label>
+          <input type="text" name="page_range" id="id_page_range" class="form-control" placeholder="All Pages">
+          {% if job_form.page_range.errors %}
+            <div class="errorlist">{{ job_form.page_range.errors }}</div>
+          {% endif %}
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+          <a href="{% url 'dashboard' %}" class="btn btn-secondary" style="flex: 1;">Cancel</a>
+          <button type="submit" class="btn btn-primary" style="flex: 2;">Print Document</button>
+        </div>
+
+      </form>
+    {% endif %}
+
+  </div>
+
   <!-- Saturated Stat Cards -->
   <div class="card-grid" style="margin-bottom: 40px;">
     
@@ -166,106 +264,8 @@
     <!-- Right Column: Print Forms & Setup Instructions -->
     <div>
 
-      <!-- Upload & Job Form -->
-      <div class="card" style="background-color: var(--color-surface-card); border-color: var(--color-hairline); margin-bottom: 24px;">
-        <h3 style="margin-bottom: 20px;">Send a Print Job</h3>
-        
-        {% if not uploaded_doc %}
-          <!-- Step 1: Upload file -->
-          <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <input type="hidden" name="upload_file" value="1">
-            
-            <div class="upload-zone" onclick="document.getElementById('file-input').click()">
-              <div class="upload-icon">📄</div>
-              <h4 style="margin-bottom: 4px;">Upload PDF Document</h4>
-              <p style="font-size: 12px; color: var(--color-muted);">Drag and drop here, or click to browse</p>
-              <input type="file" name="file" id="file-input" style="display: none;" onchange="this.form.submit()">
-            </div>
-            
-            {% if upload_form.file.errors %}
-              <div class="errorlist" style="margin-bottom: 16px;">{{ upload_form.file.errors }}</div>
-            {% endif %}
-          </form>
-        {% else %}
-          <!-- Step 2: Configure job -->
-          <div style="background-color: var(--color-canvas); padding: 16px; border-radius: var(--rounded-md); margin-bottom: 24px; border: 1px solid var(--color-hairline);">
-            <div style="font-size: 12px; color: var(--color-muted); text-transform: uppercase; font-weight: 600;">Uploaded File</div>
-            <div style="font-weight: 600; color: var(--color-ink); word-break: break-all; margin-top: 4px;">{{ uploaded_doc.original_name }}</div>
-            <div style="font-size: 13px; color: var(--color-muted); margin-top: 2px;">{{ uploaded_doc.file_size|filesizeformat }}</div>
-          </div>
-
-          <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="create_job" value="1">
-            <input type="hidden" name="document_id" value="{{ uploaded_doc.id }}">
-
-            <div class="form-group">
-              <label for="id_printer">Select Printer</label>
-              {{ job_form.printer }}
-              {% if job_form.printer.errors %}
-                <div class="errorlist">{{ job_form.printer.errors }}</div>
-              {% endif %}
-            </div>
-
-            <div class="form-group">
-              <label for="id_copies">Copies (1 - 999)</label>
-              <input type="number" name="copies" id="id_copies" min="1" max="999" value="1" class="form-control">
-              {% if job_form.copies.errors %}
-                <div class="errorlist">{{ job_form.copies.errors }}</div>
-              {% endif %}
-            </div>
-
-            <div class="form-group">
-              <label for="id_paper_size">Paper Size</label>
-              {{ job_form.paper_size }}
-              {% if job_form.paper_size.errors %}
-                <div class="errorlist">{{ job_form.paper_size.errors }}</div>
-              {% endif %}
-            </div>
-
-            <div class="form-row form-row-responsive">
-              <div class="form-group">
-                <label for="id_orientation">Orientation</label>
-                {{ job_form.orientation }}
-              </div>
-              <div class="form-group">
-                <label for="id_color_mode">Color Mode</label>
-                {{ job_form.color_mode }}
-              </div>
-            </div>
-
-            <div class="form-row form-row-responsive">
-              <div class="form-group">
-                <label for="id_duplex">Duplex</label>
-                {{ job_form.duplex }}
-              </div>
-              <div class="form-group">
-                <label for="id_quality">Quality</label>
-                {{ job_form.quality }}
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="id_page_range">Page Range (e.g. 1-5, 8)</label>
-              <input type="text" name="page_range" id="id_page_range" class="form-control" placeholder="All Pages">
-              {% if job_form.page_range.errors %}
-                <div class="errorlist">{{ job_form.page_range.errors }}</div>
-              {% endif %}
-            </div>
-
-            <div style="display: flex; gap: 12px; margin-top: 24px;">
-              <a href="{% url 'dashboard' %}" class="btn btn-secondary" style="flex: 1;">Cancel</a>
-              <button type="submit" class="btn btn-primary" style="flex: 2;">Print Document</button>
-            </div>
-
-          </form>
-        {% endif %}
-
-      </div>
-
       <!-- User Profile Card -->
-      <div class="card" style="background-color: var(--color-surface-card); border-color: var(--color-hairline); margin-bottom: 40px;">
+      <div class="card" style="background-color: var(--color-surface-card); border-color: var(--color-hairline); margin-bottom: 24px;">
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
           <div style="width: 48px; height: 48px; border-radius: var(--rounded-pill); background-color: var(--color-brand-pink); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px;">
             {{ user.first_name|default:user.username|slice:":1"|upper }}
