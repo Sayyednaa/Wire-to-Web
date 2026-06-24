@@ -30,9 +30,6 @@ server/staticfiles/
 .idea/
 *.swp
 *.swo
-server\media
-agent/
-
 # OS files
 Thumbs.db
 Desktop.ini
