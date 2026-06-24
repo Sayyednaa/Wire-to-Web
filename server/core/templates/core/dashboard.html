@@ -166,39 +166,8 @@
     <!-- Right Column: Print Forms & Setup Instructions -->
     <div>
 
-      <!-- User Profile Card -->
-      <div class="card" style="background-color: var(--color-surface-card); border-color: var(--color-hairline); margin-bottom: 24px;">
-        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
-          <div style="width: 48px; height: 48px; border-radius: var(--rounded-pill); background-color: var(--color-brand-pink); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px;">
-            {{ user.first_name|default:user.username|slice:":1"|upper }}
-          </div>
-          <div>
-            <h3 style="font-size: 18px; margin-bottom: 2px; letter-spacing: -0.3px;">{{ user.get_full_name|default:user.username }}</h3>
-            <p style="font-size: 13px; color: var(--color-muted);">{{ user.email }}</p>
-          </div>
-        </div>
-        <div style="border-top: 1px solid var(--color-hairline); padding-top: 12px; font-size: 13px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <span style="color: var(--color-muted);">Username:</span>
-            <span style="font-weight: 600; color: var(--color-ink);">{{ user.username }}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-            <span style="color: var(--color-muted);">Member Since:</span>
-            <span style="font-weight: 600; color: var(--color-ink);">{{ user.date_joined|date:"F Y" }}</span>
-          </div>
-          <div style="margin-top: 12px; border-top: 1px dashed var(--color-hairline); padding-top: 12px;">
-            <label style="font-weight: 600; font-size: 12px; color: var(--color-muted); display: block; margin-bottom: 6px;">Your API Token</label>
-            <div style="display: flex; gap: 8px;">
-              <input type="text" id="api-token" readonly value="{{ user_auth_token }}" class="form-control" style="height: 32px; font-size: 11px; padding: 6px; font-family: monospace; background-color: var(--color-canvas);">
-              <button onclick="copyToken()" class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12px; border-radius: var(--rounded-md); display: flex; align-items: center; justify-content: center;">Copy</button>
-            </div>
-            <span id="copy-success" style="font-size: 11px; color: var(--color-success); display: none; margin-top: 4px;">Copied to clipboard!</span>
-          </div>
-        </div>
-      </div>
-      
       <!-- Upload & Job Form -->
-      <div class="card" style="background-color: var(--color-surface-card); border-color: var(--color-hairline); margin-bottom: 40px;">
+      <div class="card" style="background-color: var(--color-surface-card); border-color: var(--color-hairline); margin-bottom: 24px;">
         <h3 style="margin-bottom: 20px;">Send a Print Job</h3>
         
         {% if not uploaded_doc %}
@@ -293,6 +262,37 @@
           </form>
         {% endif %}
 
+      </div>
+
+      <!-- User Profile Card -->
+      <div class="card" style="background-color: var(--color-surface-card); border-color: var(--color-hairline); margin-bottom: 40px;">
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+          <div style="width: 48px; height: 48px; border-radius: var(--rounded-pill); background-color: var(--color-brand-pink); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px;">
+            {{ user.first_name|default:user.username|slice:":1"|upper }}
+          </div>
+          <div>
+            <h3 style="font-size: 18px; margin-bottom: 2px; letter-spacing: -0.3px;">{{ user.get_full_name|default:user.username }}</h3>
+            <p style="font-size: 13px; color: var(--color-muted);">{{ user.email }}</p>
+          </div>
+        </div>
+        <div style="border-top: 1px solid var(--color-hairline); padding-top: 12px; font-size: 13px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: var(--color-muted);">Username:</span>
+            <span style="font-weight: 600; color: var(--color-ink);">{{ user.username }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+            <span style="color: var(--color-muted);">Member Since:</span>
+            <span style="font-weight: 600; color: var(--color-ink);">{{ user.date_joined|date:"F Y" }}</span>
+          </div>
+          <div style="margin-top: 12px; border-top: 1px dashed var(--color-hairline); padding-top: 12px;">
+            <label style="font-weight: 600; font-size: 12px; color: var(--color-muted); display: block; margin-bottom: 6px;">Your API Token</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="api-token" readonly value="{{ user_auth_token }}" class="form-control" style="height: 32px; font-size: 11px; padding: 6px; font-family: monospace; background-color: var(--color-canvas);">
+              <button onclick="copyToken()" class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12px; border-radius: var(--rounded-md); display: flex; align-items: center; justify-content: center;">Copy</button>
+            </div>
+            <span id="copy-success" style="font-size: 11px; color: var(--color-success); display: none; margin-top: 4px;">Copied to clipboard!</span>
+          </div>
+        </div>
       </div>
 
       <!-- Windows Agent Setup Guide -->
